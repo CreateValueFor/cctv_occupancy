@@ -30,8 +30,10 @@ def animate(i, x, y):
     ax.plot(x, y)
 
 
+# [dfTime, dfOccupancy, time, occupancy_list] = u.get_occupancy(
+#     './logs/20230420.csv')
 [dfTime, dfOccupancy, time, occupancy_list] = u.get_occupancy(
-    './logs/20230420.csv')
+    './sorted.csv')
 
 solutions = []
 
