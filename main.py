@@ -1,116 +1,116 @@
-# https://pysource.com/2023/03/28/object-detection-with-yolo-v8-on-mac-m1-opencv-with-python-tutorial
-import cv2
-from ultralytics import YOLO
 import numpy as np
-import time
-import os
-import common
-import OCR
-import opencv
-import pytesseract
-import re
+from utils.cost_function import calculate_pmv
+from utils.rc_modeling import getNextSystemValue
+import json
+from pythermalcomfort.models import pmv_ppd
+from pythermalcomfort.utilities import v_relative, clo_dynamic
 
-from preprocess import preprocess
+from utils.rc_modeling2 import hvac_main, rc_modeling
 
-pattern = r"\d|:"
-pattern2 = r"(?:\d{2}:){3}\d{2}"
-pattern3 = r"\d{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01]) (0[1-9]|1[0-9]|2[0-4]):(0[1-9]|[1-5][0-9]):(0[1-9]|[1-5][0-9])"
-
-# titlePattern = r"\d+_|_\d+|\d+"
-titlePattern = r"\d+"
+X0 = np.array([[20, 18, 12]]).T
+U0 = np.array([[0, 0]]).T
 
 
-pytesseract.pytesseract.tesseract_cmd = '/opt/homebrew/bin/tesseract'
+x = [X0]
 
-path = "/Volumes/Elements/중앙도서관 1층 열람실/"
-# path = ""
-1
-file_list = os.listdir(path)
-# file_list = ['cafe.mp4']
-log_path = "./studyroom1f_0504/"
-model = YOLO("yolov8m.pt")
+thermal = []
+humid = []
 
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+with open("thermal.json") as file:
+    data = json.load(file)
+    humid = data['2023-04-12']['humid']
+    thermal = data['2023-04-12']['thermal']
 
 
-if __name__ == "__main__":
+# print(results)
+# print(x)
 
-    for video in file_list[90:]:
-        if (video[0] == "."):
-            continue
-        print(video)
 
-        cap = cv2.VideoCapture(path + video)
-        # test_text = "MAIN-학술정보관 1-학술정보관 1층 로비3-Video-20230420_183018_01.mp4.csv"
-        # cap = cv2.VideoCapture(video)
-        logname = "".join(re.findall(titlePattern, video)[3:])
-        csv = open(log_path + logname + ".csv", 'w')
-        csv.write("Time,Occupancy" + '\n')
+def __main__():
+    # 구획 정보 설정
+    room_capacity = 14400  # 구획 열용량 (J/°C)
+    room_resistance = 10  # 구획 열저항 (°C/W)
 
-        while True:
-            # for _ in range(0, 1000):
-            for _ in range(0, 30000):
-                cap.grab()
-            ret, frame = cap.read()
-            if not ret:
-                break
+    # 외부 조건 설정
+    external_temperature = np.array(thermal)  # 외기온도 (°C)
 
-            # 이미지 clip
-            x, y, w, h = int(frame.shape[1] * 0.35), int(frame.shape[0] * 0.90), int(
-                frame.shape[1] * 0.30), int(frame.shape[0] * 0.08)
-            clip_img = frame[y:y+h, x:x+w]
-            clip_img = cv2.cvtColor(clip_img, cv2.COLOR_BGR2GRAY)
-            # 이미지 전처리
-            # clip_img = preprocess(clip_img)
-            # cv2.imshow("Img", clip_img)
-            # if cv2.waitKey(1) == ord('q'):
-            #     break
+    # 태양
+    base_value = 2000
+    lower_limit = 100
+    upper_limit = 200
+    array_length = 24
 
-            text = pytesseract.image_to_string(clip_img, lang='eng')
-            # date = "".join(re.findall(pattern3, text))
-            date = text
-            print(date)
-            # continue
+    random_array = np.random.randint(
+        lower_limit, upper_limit + 1, size=array_length)
+    result_array = base_value + random_array
+    solar_radiation = result_array  # 태양복사량 (W/m^2)
 
-            # 추출된 이미지에 사각형 그리기
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+    # 초기 조건 설정
+    initial_temperature = 20  # 초기 온도 (°C)
 
-            # 추출된 프레임 화면에 표시
-            cv2.putText(frame, date, (x, y),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-            # cv2.imshow("Frame", frame)
+    # 시뮬레이션 파라미터 설정
+    simulation_duration = 24 * 60 * 60  # 시뮬레이션 기간 (초)
+    time_step = 60 * 60  # 시간 단계 (초)
 
-            # gray = cv2.cvtColor(clip_img, cv2.COLOR_BGR2GRAY)
-            # cv2.imshow("Img", gray)
-            # if cv2.waitKey(1) == ord('q'):
-            #     break
+    # 재실 인원 모델링
+    time = np.arange(0, simulation_duration, time_step)
+    occupancy = np.random.randint(
+        low=40, high=100, size=len(time))  # 재실 인원 수 (임의로 생성)
 
-            # cv2.imshow("Frame", frame)
+    # 결과 저장을 위한 배열 초기화
+    temperature = np.zeros(len(time))
+    temperature_with_occu = np.zeros(len(time))
+    temperature_with_occu_hvac = np.zeros(len(time))
+    temperature_with_occu_hvac_control = np.zeros(len(time))
 
-            # textArea = OCR.clipText(frame)
-            # text = OCR.contractText(textArea)
-            # continue
+    # HVAC 시스템 제어 변수 설정
+    heating_power_max = 100000 * 10  # 난방 시스템 출력 (W)
+    cooling_power_max = 100000 * 10  # 냉방 시스템 출력 (W)
 
-            # 인원수 추출
-            results = model(frame, device="mps")
-            result = results[0]
-            bboxes = np.array(result.boxes.xyxy.cpu(), dtype="int")
-            classes = np.array(result.boxes.cls.cpu(), dtype="int")
+    # 시뮬레이션 파라미터 설정
+    simulation_duration = 24 * 60 * 60  # 시뮬레이션 기간 (초)
+    time_step = 60 * 60  # 시간 단계 (초)
 
-            # 인원 위치 그리기
-            # opencv.drawPerson(classes, bboxes, frame)
+    temperature[0] = initial_temperature
+    temperature_with_occu[0] = initial_temperature
+    temperature_with_occu_hvac[0] = initial_temperature
+    temperature_with_occu_hvac_control[0] = initial_temperature
 
-            count = common.count_zeros(classes)
-            cv2.putText(frame, "people count: {}".format(count), (x, y-30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    for t in range(1, len(time)):
+        [a, b, c, d] = rc_modeling(temperature_with_occu_hvac_control[t-1], external_temperature[t],
+                                   solar_radiation[t], occupancy[t], room_capacity, room_resistance, time_step, set_temp=23, threshold=1, heat_m=heating_power_max, cool_m=cooling_power_max)
+        temperature[t] = a
+        temperature_with_occu[t] = b
+        temperature_with_occu_hvac[t] = c
+        temperature_with_occu_hvac_control[t] = d
 
-            # csv.write("{} {}".format(logname, date) + ", " + str(count) + '\n')
-            csv.write("{}, {}".format(date, str(count)) + '\n')
+    for i in range(0, 24):
+        lm0 = np.array([[thermal[i], 2.05, 2]]).T
 
-            cv2.imshow("Img", frame)
-            if cv2.waitKey(1) == ord('q'):
-                break
-        csv.flush()
-        csv.close()
-        cap.release()
-        cv2.destroyAllWindows()
+        x.append(x[i] - getNextSystemValue(x[i], U0, lm0))
+        print(getNextSystemValue(x[i], U0, lm0))
+        # print(x)
+
+        p = np.array([65, 0.75, 3, thermal[i]])
+        # tdb = x[i][0]
+        # tdb = thermal[i]
+        tdb = temperature[i]
+        # tr = 25
+        # tr = x[i][0]
+        # tr = thermal[i]
+        tr = temperature[i]
+        rh = humid[i]
+        v = 0.1
+        met = 1.4
+        clo = 0.5
+
+    # pmv = calculate_pmv(x[i][0], thermal[i], humid[i], met, clo)
+
+        v_r = v_relative(v=v, met=met)
+        clo_d = clo_dynamic(clo=clo, met=met)
+        results = pmv_ppd(tdb=tdb, tr=tr, vr=v_r, rh=rh, met=met,
+                          clo=clo_d, limit_inputs=False)
+        print(results)
+
+
+hvac_main()

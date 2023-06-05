@@ -48,10 +48,16 @@ def get_indoor_temperature():
 def get_occupancy(csv):
     df = pd.read_csv(csv)
 
-    df = df[(df['Time'].str.len() == 20)]
+    # df = df[(df['Time'].str.len() == 20)]
 
     # return
-    df['Time'] = pd.to_datetime(df['Time'], format='%Y%m%d %H:%M:%S:%f')
+
+    df['Time'] = pd.to_datetime(df['Time'], format='%Y-%m-%d %H:%M:%S')
+    df['Occupancy'] = df['Occupancy']*3
+
+    mask = (df['Time'].dt.year == 2023) & (
+        df['Time'].dt.month == 4) & (df['Time'].dt.day == 8)
+    df = df.loc[mask]
     # plot 그리기
     fig, ax = plt.subplots()
     ax.plot(df['Time'], df['Occupancy'])
@@ -101,8 +107,6 @@ def agfregate_csv(path):
         # new_col = pd.concat([new_col, temp_df], axis=0, ignore_index=True)
         # result = pd.concat([result, df])
         # print(len(new_result))
-    print(result)
-    print(result.dropna())
 
     clean_data = result.dropna()
     clean_data['Time'] = pd.to_datetime(clean_data['Time'], errors='coerce')
@@ -110,10 +114,7 @@ def agfregate_csv(path):
         '%Y-%m-%d %H:%M:%S') != 'NaT') | (clean_data['Time'].dt.strftime('%Y-%m-%d %H:%M') != 'NaT')]
     valid_df = valid_df.dropna(subset=['Time'])
 
-    print(len(valid_df))
-
     sorted_df = valid_df.sort_values(by="Time")
-    print(sorted_df)
     # sorted_df.to_csv('sorted.csv', index=False)
 
     # 시각화
@@ -128,6 +129,11 @@ def agfregate_csv(path):
         sorted_df['Time'].dt.month == 4) & (sorted_df['Time'].dt.day == 5)
     df_filtered = sorted_df.loc[mask]
     df_filtered['Time'] = df_filtered['Time'].dt.strftime('%H:%M')
+
+    plt.plot(df_filtered['Time'], sorted_df['Occupancy'])
+    plt.xlabel('Time')
+    plt.ylabel('Occupancy')
+    plt.title('Occupancy over Time')
 
     fig, ax = plt.subplots()
 
@@ -172,7 +178,7 @@ def show_trends(path):
 
     # 그래프 그리기
     for group, group_data in grouped_data.items():
-        if group == '2023-04-09':
+        if group != '2023-04-12':
             continue
         x_values = pd.to_datetime(group_data['Hour'])
         plt.plot(x_values, group_data['Occupancy'], label=group)

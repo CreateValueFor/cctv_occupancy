@@ -8,6 +8,7 @@ import mpcUtil as u
 import matplotlib.dates as mdates
 import pandas as pd
 
+
 # x = [0]
 # y = [23]
 # result = 0
@@ -35,15 +36,17 @@ def animate(i, x, y):
 [dfTime, dfOccupancy, time, occupancy_list] = u.get_occupancy(
     './sorted.csv')
 
+# print(occupancy_list)
 solutions = []
 
 for occupancy in occupancy_list:
+
     # 실시간으로 환경 변수(실내 온도, 습도, 재실 인원 수 등)를 감지
     ti = u.get_indoor_temperature()
     # continue
     # 최적화 알고리즘을 이용하여 최적의 제어 입력 구하기
     x0 = [20, 25, 5, occupancy]
-    bnd = ((18, 25), (22, 28), (0, 10), (0, 20))
+    bnd = ((15, 30), (22, 28), (0, 10), (0, 100))
     con1 = {'type': 'ineq', 'fun': u.constraint1}
     con2 = {'type': 'ineq', 'fun': u.constraint2}
     con3 = {'type': 'ineq', 'fun': u.constraint3}
@@ -60,6 +63,7 @@ for occupancy in occupancy_list:
     # animation = FuncAnimation(fig, animate, fargs=(x, y), frames=[])
 
     # time.sleep(1)  # 1초마다 반복
+
 fig, ax = plt.subplots()
 dfSolutions = pd.DataFrame({'Occupancy': solutions})
 ax.plot(dfTime, dfSolutions)

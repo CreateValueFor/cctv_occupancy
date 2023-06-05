@@ -7,11 +7,19 @@ from matplotlib.animation import FuncAnimation
 import mpcUtil as u
 import matplotlib.dates as mdates
 import pandas as pd
+import MPC_ver2 as mpcv2
 
-# [dfTime, dfOccupancy, time, occupancy_list] = u.get_occupancy(
-#     './logs/20230420.csv')
-path = "./final/"
-
-# (u.agfregate_csv(path))
 
 u.show_trends('sorted.csv')
+
+
+# [dfTime, dfOccupancy, time, occupancy_list] = u.get_occupancy(
+#     './sorted.csv')
+
+path = "./final/"
+
+(u.agfregate_csv(path))
+
+
+print(type(dfTime))
+mpcv2.mpc()
